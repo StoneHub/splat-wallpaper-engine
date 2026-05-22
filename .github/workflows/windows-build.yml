@@ -47,7 +47,8 @@ jobs:
 
       - name: Publish
         run: >
-          dotnet publish -c Release -r win-x64
+          dotnet publish SplatWallpaperEngine.Win.csproj
+          -c Release -r win-x64
           --self-contained false
           -p:PublishReadyToRun=true
           -p:PublishSingleFile=false
@@ -58,7 +59,7 @@ jobs:
         run: Compress-Archive -Path windows-x64/* -DestinationPath Splat-Wallpaper-Engine-Windows-x64.zip -Force
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: Splat-Wallpaper-Engine-Windows-x64
           path: dist/Splat-Wallpaper-Engine-Windows-x64.zip
