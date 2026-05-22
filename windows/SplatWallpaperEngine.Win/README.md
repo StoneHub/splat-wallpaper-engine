@@ -27,6 +27,10 @@ Before building a distributable package, copy the shared renderer into this proj
 dotnet publish -c Release -r win-x64 --self-contained false
 ```
 
+## GitHub Actions
+
+The repository includes `.github/workflows/windows-build.yml`, which runs on `windows-latest`, builds this project, publishes `win-x64`, zips the publish folder, and uploads `Splat-Wallpaper-Engine-Windows-x64.zip` as a workflow artifact.
+
 ## Test Checklist
 
 - App starts without a normal taskbar button.

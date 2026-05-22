@@ -1,0 +1,63 @@
+name: Windows Build
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/windows-build.yml"
+      - "Sources/SplatWallpaperEngine/Renderer/**"
+      - "windows/**"
+  pull_request:
+    paths:
+      - ".github/workflows/windows-build.yml"
+      - "Sources/SplatWallpaperEngine/Renderer/**"
+      - "windows/**"
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    name: Build Windows app
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: windows/SplatWallpaperEngine.Win
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Sync shared renderer
+        run: ./sync-renderer.ps1
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build -c Release --no-restore
+
+      - name: Publish
+        run: >
+          dotnet publish -c Release -r win-x64
+          --self-contained false
+          -p:PublishReadyToRun=true
+          -p:PublishSingleFile=false
+          -o ../../dist/windows-x64
+
+      - name: Create zip artifact
+        working-directory: dist
+        run: Compress-Archive -Path windows-x64/* -DestinationPath Splat-Wallpaper-Engine-Windows-x64.zip -Force
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Splat-Wallpaper-Engine-Windows-x64
+          path: dist/Splat-Wallpaper-Engine-Windows-x64.zip
+          if-no-files-found: error
