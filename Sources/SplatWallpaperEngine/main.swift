@@ -23,6 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var wallpaperController: WallpaperWindowController?
     private var interactionMenuItem: NSMenuItem?
     private var rotationMenuItem: NSMenuItem?
+    private var aboutWindowController: AboutWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -52,6 +53,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         rotationMenuItem = rotationItem
 
         menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "About Splat Wallpaper Engine", action: #selector(showAbout), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q"))
 
         item.menu = menu
@@ -134,8 +136,90 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         rotationMenuItem?.state = isRotating ? .on : .off
     }
 
+    @objc private func showAbout() {
+        if aboutWindowController == nil {
+            aboutWindowController = AboutWindowController()
+        }
+
+        NSApp.activate(ignoringOtherApps: true)
+        aboutWindowController?.showWindow(nil)
+    }
+
     @objc private func quit() {
         NSApp.terminate(nil)
+    }
+}
+
+@MainActor
+final class AboutWindowController: NSWindowController {
+    init() {
+        let viewController = AboutViewController()
+        let window = NSWindow(contentViewController: viewController)
+        window.title = "About Splat Wallpaper Engine"
+        window.styleMask = [.titled, .closable]
+        window.isReleasedWhenClosed = false
+        window.setContentSize(NSSize(width: 420, height: 240))
+        window.center()
+        super.init(window: window)
+    }
+
+    required init?(coder: NSCoder) {
+        nil
+    }
+}
+
+@MainActor
+final class AboutViewController: NSViewController {
+    override func loadView() {
+        let root = NSView(frame: NSRect(x: 0, y: 0, width: 420, height: 240))
+        root.wantsLayer = true
+        root.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+
+        let title = label("Splat Wallpaper Engine", font: .boldSystemFont(ofSize: 20))
+        let subtitle = label("Interactive macOS desktop wallpaper for Gaussian splats.", font: .systemFont(ofSize: 13))
+        let license = label("Licensed under Apache-2.0. Renderer includes MIT-licensed PlayCanvas/SuperSplat code.", font: .systemFont(ofSize: 12))
+        let githubButton = linkButton("GitHub: StoneHub", url: "https://github.com/StoneHub")
+        let siteButton = linkButton("monroes.tech", url: "https://monroes.tech")
+
+        let stack = NSStackView(views: [title, subtitle, githubButton, siteButton, license])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 12
+        stack.translatesAutoresizingMaskIntoConstraints = false
+
+        root.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 24),
+            stack.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -24),
+            stack.centerYAnchor.constraint(equalTo: root.centerYAnchor)
+        ])
+
+        view = root
+    }
+
+    private func label(_ text: String, font: NSFont) -> NSTextField {
+        let field = NSTextField(labelWithString: text)
+        field.font = font
+        field.lineBreakMode = .byWordWrapping
+        field.maximumNumberOfLines = 0
+        return field
+    }
+
+    private func linkButton(_ title: String, url: String) -> NSButton {
+        let button = NSButton(title: title, target: self, action: #selector(openLink(_:)))
+        button.isBordered = false
+        button.alignment = .left
+        button.contentTintColor = .linkColor
+        button.identifier = NSUserInterfaceItemIdentifier(url)
+        return button
+    }
+
+    @objc private func openLink(_ sender: NSButton) {
+        guard let value = sender.identifier?.rawValue, let url = URL(string: value) else {
+            return
+        }
+
+        NSWorkspace.shared.open(url)
     }
 }
 

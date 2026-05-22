@@ -41,3 +41,14 @@ Use the menu-bar `Splat` item to:
 - show or hide the wallpaper window;
 - toggle interaction mode;
 - toggle slow rotation.
+
+## Links
+
+- GitHub: https://github.com/StoneHub
+- Personal site: https://monroes.tech
+
+## License
+
+Splat Wallpaper Engine is licensed under the Apache License, Version 2.0. Apache-2.0 is permissive like MIT, but includes an explicit patent grant from contributors.
+
+The bundled renderer includes MIT-licensed SuperSplat/PlayCanvas code from PlayCanvas Ltd.; see `NOTICE`.
