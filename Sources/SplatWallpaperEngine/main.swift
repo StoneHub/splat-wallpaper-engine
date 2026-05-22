@@ -352,6 +352,12 @@ final class WallpaperWindowController: NSObject {
 
     func show() {
         if let existingWindow = window {
+            existingWindow.alphaValue = 1
+            rendererView?.setWallpaperVisible(true)
+            rendererView?.setRotationSpeed(rotationSpeedDegreesPerSecond)
+            rendererView?.setRotationFrameRate(rotationFramesPerSecond)
+            rendererView?.setRotationVSyncEnabled(rotationUsesVSync)
+            rendererView?.setRotationEnabled(isRotating)
             existingWindow.orderFrontRegardless()
             return
         }
@@ -375,6 +381,7 @@ final class WallpaperWindowController: NSObject {
         wallpaperWindow.title = "Splat Wallpaper Engine"
         wallpaperWindow.isOpaque = true
         wallpaperWindow.backgroundColor = .black
+        wallpaperWindow.alphaValue = 1
         wallpaperWindow.acceptsMouseMovedEvents = true
         wallpaperWindow.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
         wallpaperWindow.level = passiveLevel
@@ -392,6 +399,9 @@ final class WallpaperWindowController: NSObject {
     }
 
     func hide() {
+        rendererView?.setRotationEnabled(false)
+        rendererView?.setWallpaperVisible(false)
+        window?.alphaValue = 0
         window?.orderOut(nil)
     }
 
@@ -462,6 +472,7 @@ final class RendererView: WKWebView, WKScriptMessageHandler, WKNavigationDelegat
     private var rotationSpeedDegreesPerSecond = 8.0
     private var rotationFramesPerSecond = 30.0
     private var rotationUsesVSync = false
+    private var wallpaperVisible = true
 
     init(frame: NSRect, sceneURL: URL?) {
         let config = WKWebViewConfiguration()
@@ -555,6 +566,17 @@ final class RendererView: WKWebView, WKScriptMessageHandler, WKNavigationDelegat
         }
     }
 
+    func setWallpaperVisible(_ isVisible: Bool) {
+        wallpaperVisible = isVisible
+        isHidden = !isVisible
+        let value = isVisible ? "true" : "false"
+        evaluateJavaScript("window.splatWallpaperSetVisible?.(\(value));") { _, error in
+            if let error {
+                diagnosticLog("[SplatRenderer] visibility bridge failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         diagnosticLog("[SplatRenderer] \(message.body)")
     }
@@ -564,6 +586,7 @@ final class RendererView: WKWebView, WKScriptMessageHandler, WKNavigationDelegat
         setRotationSpeed(rotationSpeedDegreesPerSecond)
         setRotationFrameRate(rotationFramesPerSecond)
         setRotationVSyncEnabled(rotationUsesVSync)
+        setWallpaperVisible(wallpaperVisible)
         setRotationEnabled(rotationEnabled)
     }
 

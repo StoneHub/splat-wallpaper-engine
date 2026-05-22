@@ -587,6 +587,7 @@
                 const settingsJson = await settings;
                 const viewer = await main(canvas, settingsJson, config);
                 let isWallpaperRotating = false;
+                let wallpaperVisible = true;
                 let wallpaperRotationSpeed = 8;
                 let wallpaperRotationFPS = 30;
                 let wallpaperRotationUsesVSync = false;
@@ -617,7 +618,7 @@
                 };
 
                 viewer.global.app.on('update', (deltaTime) => {
-                    if (!isWallpaperRotating) {
+                    if (!wallpaperVisible || !isWallpaperRotating) {
                         return;
                     }
 
@@ -653,7 +654,7 @@
                 };
 
                 window.splatWallpaperSetRotate = (enabled) => {
-                    isWallpaperRotating = Boolean(enabled);
+                    isWallpaperRotating = wallpaperVisible && Boolean(enabled);
 
                     if (isWallpaperRotating) {
                         wallpaperRotationBase = readSplatEuler() ?? wallpaperRotationBase;
@@ -665,6 +666,20 @@
                         wallpaperRotationBase = readSplatEuler() ?? wallpaperRotationBase;
                         wallpaperRotationOffset = 0;
                         wallpaperRotationAccumulator = 0;
+                    }
+                };
+
+                window.splatWallpaperSetVisible = (visible) => {
+                    wallpaperVisible = Boolean(visible);
+                    document.documentElement.style.visibility = wallpaperVisible ? 'visible' : 'hidden';
+
+                    if (!wallpaperVisible) {
+                        isWallpaperRotating = false;
+                        wallpaperRotationAccumulator = 0;
+                        viewer.forceRenderNextFrame = false;
+                        viewer.global.app.renderNextFrame = false;
+                    } else {
+                        viewer.global.app.renderNextFrame = true;
                     }
                 };
 
