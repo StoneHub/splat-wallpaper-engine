@@ -2,7 +2,15 @@
 
 Interactive macOS desktop wallpaper for Gaussian splats.
 
+<p align="center">
+  <img src="assets/AppIcon.iconset/icon_256x256.png" width="128" alt="Splat Wallpaper Engine app icon">
+</p>
+
 ![Splat Wallpaper Engine showing a crane Gaussian splat as a macOS desktop wallpaper](assets/splat-wallpaper-desktop.png)
+
+![Splat Wallpaper Engine about window over the desktop wallpaper](assets/splat-wallpaper-about.png)
+
+![Splat Wallpaper Engine menu bar controls for rotation, VSync, speed, and FPS](assets/splat-wallpaper-menu.png)
 
 The goal is a menu-bar Mac app that renders a local Gaussian splat as the desktop background, then lets the user temporarily interact with it by orbiting, panning, zooming, and saving a new default camera angle.
 

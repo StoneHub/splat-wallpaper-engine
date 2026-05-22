@@ -635,7 +635,7 @@
                 window.splatWallpaperSetRotateSpeed = (degreesPerSecond) => {
                     const parsed = Number(degreesPerSecond);
                     if (Number.isFinite(parsed)) {
-                        wallpaperRotationSpeed = Math.max(0, Math.min(90, parsed));
+                        wallpaperRotationSpeed = Math.max(0.01, Math.min(90, parsed));
                     }
                 };
 

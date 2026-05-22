@@ -84,12 +84,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let slider = NSSlider(
             value: rotationSpeedDegreesPerSecond,
-            minValue: 1,
+            minValue: 0.05,
             maxValue: 36,
             target: self,
             action: #selector(rotationSpeedChanged(_:))
         )
-        slider.numberOfTickMarks = 8
+        slider.numberOfTickMarks = 9
         slider.allowsTickMarkValuesOnly = false
         slider.translatesAutoresizingMaskIntoConstraints = false
 
@@ -147,7 +147,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func rotationSpeedLabelText() -> String {
-        "Rotate Speed: \(Int(rotationSpeedDegreesPerSecond.rounded())) deg/s"
+        let speedText = rotationSpeedDegreesPerSecond < 1
+            ? String(format: "%.2f", rotationSpeedDegreesPerSecond)
+            : String(format: "%.1f", rotationSpeedDegreesPerSecond)
+        return "Rotate Speed: \(speedText) deg/s"
     }
 
     private func rotationFPSLabelText() -> String {
