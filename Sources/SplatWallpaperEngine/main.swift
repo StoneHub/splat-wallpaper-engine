@@ -1,6 +1,22 @@
 import AppKit
 import WebKit
 
+func diagnosticLog(_ message: String) {
+    let line = "\(Date()) \(message)\n"
+    let url = URL(fileURLWithPath: "/tmp/splat-wallpaper-engine.log")
+    if let data = line.data(using: .utf8) {
+        if FileManager.default.fileExists(atPath: url.path),
+           let handle = try? FileHandle(forWritingTo: url) {
+            try? handle.seekToEnd()
+            try? handle.write(contentsOf: data)
+            try? handle.close()
+        } else {
+            try? data.write(to: url)
+        }
+    }
+    print(message)
+}
+
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
@@ -36,6 +52,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showWallpaper() {
+        diagnosticLog("[SplatWallpaper] show wallpaper")
         let controller = WallpaperWindowController()
         controller.show()
         wallpaperController = controller
@@ -91,9 +108,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 @MainActor
 final class WallpaperWindowController: NSObject {
-    private var window: NSWindow?
+    private var window: WallpaperWindow?
     private weak var rendererView: RendererView?
     private var isInteractive = false
+    private let passiveLevel = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)) + 1)
+    private let interactiveLevel = NSWindow.Level.floating
 
     func show() {
         if let existingWindow = window {
@@ -102,11 +121,14 @@ final class WallpaperWindowController: NSObject {
         }
 
         guard let screen = NSScreen.main else {
+            diagnosticLog("[SplatWallpaper] no main screen")
             return
         }
 
         let contentRect = screen.frame
-        let wallpaperWindow = NSWindow(
+        let contentBounds = NSRect(origin: .zero, size: contentRect.size)
+        diagnosticLog("[SplatWallpaper] screen frame=\(contentRect) contentBounds=\(contentBounds)")
+        let wallpaperWindow = WallpaperWindow(
             contentRect: contentRect,
             styleMask: [.borderless],
             backing: .buffered,
@@ -117,11 +139,12 @@ final class WallpaperWindowController: NSObject {
         wallpaperWindow.title = "Splat Wallpaper Engine"
         wallpaperWindow.isOpaque = true
         wallpaperWindow.backgroundColor = .black
+        wallpaperWindow.acceptsMouseMovedEvents = true
         wallpaperWindow.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
-        wallpaperWindow.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)) + 1)
+        wallpaperWindow.level = passiveLevel
         wallpaperWindow.ignoresMouseEvents = !isInteractive
         wallpaperWindow.hasShadow = false
-        let rendererView = RendererView(frame: contentRect, sceneURL: SceneStore.currentSceneURL)
+        let rendererView = RendererView(frame: contentBounds, sceneURL: SceneStore.currentSceneURL)
         wallpaperWindow.contentView = rendererView
         wallpaperWindow.orderFrontRegardless()
 
@@ -136,6 +159,16 @@ final class WallpaperWindowController: NSObject {
     func toggleInteractionMode() -> Bool {
         isInteractive.toggle()
         window?.ignoresMouseEvents = !isInteractive
+        window?.acceptsMouseMovedEvents = isInteractive
+        if isInteractive {
+            NSApp.activate(ignoringOtherApps: true)
+            window?.level = interactiveLevel
+            window?.makeKeyAndOrderFront(nil)
+            window?.makeFirstResponder(rendererView)
+        } else {
+            window?.level = passiveLevel
+            window?.orderFrontRegardless()
+        }
         return isInteractive
     }
 
@@ -144,12 +177,41 @@ final class WallpaperWindowController: NSObject {
     }
 }
 
+final class WallpaperWindow: NSWindow {
+    override var canBecomeKey: Bool {
+        true
+    }
+
+    override var canBecomeMain: Bool {
+        true
+    }
+}
+
 @MainActor
-final class RendererView: WKWebView {
+final class RendererView: WKWebView, WKScriptMessageHandler, WKNavigationDelegate {
     init(frame: NSRect, sceneURL: URL?) {
         let config = WKWebViewConfiguration()
         config.preferences.javaScriptCanOpenWindowsAutomatically = false
+        if let rendererDirectory = try? SceneStore.rendererDirectory {
+            config.setURLSchemeHandler(RendererSchemeHandler(rootDirectory: rendererDirectory), forURLScheme: "splatwallpaper")
+        }
+        let userContentController = WKUserContentController()
+        userContentController.addUserScript(WKUserScript(
+            source: """
+            window.addEventListener('error', event => {
+              window.webkit.messageHandlers.splatLog.postMessage('error: ' + event.message + ' at ' + event.filename + ':' + event.lineno + ':' + event.colno);
+            });
+            window.addEventListener('unhandledrejection', event => {
+              window.webkit.messageHandlers.splatLog.postMessage('unhandledrejection: ' + (event.reason && (event.reason.stack || event.reason.message) || event.reason));
+            });
+            """,
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: false
+        ))
+        config.userContentController = userContentController
         super.init(frame: frame, configuration: config)
+        userContentController.add(self, name: "splatLog")
+        navigationDelegate = self
         wantsLayer = true
         layer?.backgroundColor = NSColor.black.cgColor
         loadRenderer(sceneURL: sceneURL)
@@ -160,23 +222,88 @@ final class RendererView: WKWebView {
     }
 
     func loadRenderer(sceneURL: URL?) {
-        guard var components = Bundle.module.url(forResource: "index", withExtension: "html", subdirectory: "Renderer")
-            .flatMap({ URLComponents(url: $0, resolvingAgainstBaseURL: false) }) else {
-            loadHTMLString("<html><body style='background:#050505;color:white'>Renderer missing</body></html>", baseURL: nil)
-            return
-        }
+        var components = URLComponents()
+        components.scheme = "splatwallpaper"
+        components.host = "renderer"
+        components.path = "/index.html"
 
         if let sceneURL {
+            diagnosticLog("[SplatRenderer] scene url=\(sceneURL.absoluteString)")
             components.queryItems = [
-                URLQueryItem(name: "content", value: sceneURL.absoluteString)
+                URLQueryItem(name: "content", value: "./\(sceneURL.lastPathComponent)")
             ]
         }
 
         guard let url = components.url else {
+            diagnosticLog("[SplatRenderer] unable to build renderer url")
             return
         }
 
-        loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+        diagnosticLog("[SplatRenderer] renderer url=\(url.absoluteString)")
+        load(URLRequest(url: url))
+    }
+
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        diagnosticLog("[SplatRenderer] \(message.body)")
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        diagnosticLog("[SplatRenderer] navigation finished")
+    }
+
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        diagnosticLog("[SplatRenderer] navigation failed: \(error.localizedDescription)")
+    }
+
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        diagnosticLog("[SplatRenderer] provisional navigation failed: \(error.localizedDescription)")
+    }
+}
+
+final class RendererSchemeHandler: NSObject, WKURLSchemeHandler {
+    private let rootDirectory: URL
+
+    init(rootDirectory: URL) {
+        self.rootDirectory = rootDirectory
+    }
+
+    func webView(_ webView: WKWebView, start urlSchemeTask: WKURLSchemeTask) {
+        guard let url = urlSchemeTask.request.url else {
+            urlSchemeTask.didFailWithError(SceneStoreError.invalidRendererRequest)
+            return
+        }
+
+        let relativePath = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let fileURL = rootDirectory.appendingPathComponent(relativePath.isEmpty ? "index.html" : relativePath)
+        diagnosticLog("[SplatScheme] \(url.absoluteString) -> \(fileURL.path)")
+
+        do {
+            let data = try Data(contentsOf: fileURL)
+            let response = URLResponse(
+                url: url,
+                mimeType: mimeType(for: fileURL.pathExtension),
+                expectedContentLength: data.count,
+                textEncodingName: nil
+            )
+            urlSchemeTask.didReceive(response)
+            urlSchemeTask.didReceive(data)
+            urlSchemeTask.didFinish()
+        } catch {
+            urlSchemeTask.didFailWithError(error)
+        }
+    }
+
+    func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) {}
+
+    private func mimeType(for pathExtension: String) -> String {
+        switch pathExtension.lowercased() {
+        case "html": "text/html"
+        case "css": "text/css"
+        case "js": "text/javascript"
+        case "json": "application/json"
+        case "sog": "application/octet-stream"
+        default: "application/octet-stream"
+        }
     }
 }
 
@@ -215,9 +342,15 @@ enum SceneStore {
 
 enum SceneStoreError: LocalizedError {
     case missingRenderer
+    case invalidRendererRequest
 
     var errorDescription: String? {
-        "The bundled renderer directory could not be found."
+        switch self {
+        case .missingRenderer:
+            "The bundled renderer directory could not be found."
+        case .invalidRendererRequest:
+            "The renderer requested an invalid resource."
+        }
     }
 }
 

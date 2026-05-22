@@ -12,6 +12,18 @@
                 img.src = url;
                 return img;
             };
+            const log = (message) => {
+                window.webkit?.messageHandlers?.splatLog?.postMessage(String(message));
+            };
+            const fetchWithLog = async (label, resource) => {
+                log(`${label}: fetching ${resource}`);
+                const response = await fetch(resource);
+                log(`${label}: status ${response.status} ok=${response.ok} type=${response.type}`);
+                if (!response.ok && response.status !== 0) {
+                    throw new Error(`${label} fetch failed: ${response.status}`);
+                }
+                return response;
+            };
 
             const url = new URL(location.href);
 
@@ -32,7 +44,7 @@
                 skyboxUrl,
                 collisionUrl,
                 contentUrl,
-                contents: fetch(contentUrl),
+                contents: fetchWithLog('scene', contentUrl),
                 noui: url.searchParams.has('noui') ? ['', '1', 'true', 'enable'].includes(url.searchParams.get('noui')) : true,
                 noanim: url.searchParams.has('noanim'),
                 nofx: url.searchParams.has('nofx'),
@@ -49,8 +61,9 @@
 
             window.sse = {
                 config: sseConfig,
-                settings: fetch(settingsUrl).then(response => response.json())
+                settings: fetchWithLog('settings', settingsUrl).then(response => response.json())
             };
+            log(`webgl=${!!document.createElement('canvas').getContext('webgl2') || !!document.createElement('canvas').getContext('webgl')}`);
         </script>
     </head>
     <body>

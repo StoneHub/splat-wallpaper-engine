@@ -67101,7 +67101,7 @@ const downloadArrayBuffer = async (url, asset)=>{
 				throw new Error('Error loading resource');
 		}
 		if (response instanceof Response) {
-				if (!response.ok) {
+					if (!response.ok && response.status !== 0) {
 						throw new Error(`Error loading resource: ${response.status} ${response.statusText}`);
 				}
 				const totalLength = parseInt(response.headers.get('content-length') ?? '0', 10);
