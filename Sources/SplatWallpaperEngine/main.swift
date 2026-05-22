@@ -26,6 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         setupMenu()
+        promptForInitialSceneIfNeeded()
         showWallpaper()
     }
 
@@ -71,14 +72,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func openScene() {
+        installSceneFromPicker()
+    }
+
+    @discardableResult
+    private func installSceneFromPicker() -> Bool {
         let panel = NSOpenPanel()
         panel.title = "Choose a Gaussian Splat SOG Scene"
+        panel.message = "Pick a .sog file to use as your interactive desktop wallpaper."
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         panel.allowedContentTypes = [.init(filenameExtension: "sog")!]
 
         guard panel.runModal() == .OK, let selectedURL = panel.url else {
-            return
+            return false
         }
 
         do {
@@ -87,9 +94,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 showWallpaper()
             }
             wallpaperController?.loadScene(managedSceneURL)
+            return true
         } catch {
             NSApp.presentError(error)
+            return false
         }
+    }
+
+    private func promptForInitialSceneIfNeeded() {
+        guard !SceneStore.hasInstalledScene else {
+            return
+        }
+
+        NSApp.activate(ignoringOtherApps: true)
+        _ = installSceneFromPicker()
     }
 
     @objc private func toggleInteractionMode() {
@@ -328,6 +346,14 @@ enum SceneStore {
         }
 
         return directory.appendingPathComponent("scene.sog")
+    }
+
+    static var hasInstalledScene: Bool {
+        guard let directory = try? rendererDirectory else {
+            return false
+        }
+
+        return FileManager.default.fileExists(atPath: directory.appendingPathComponent("current-scene.sog").path)
     }
 
     static func installScene(from sourceURL: URL) throws -> URL {

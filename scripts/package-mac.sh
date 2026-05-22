@@ -63,6 +63,8 @@ hdiutil create \
   -format UDZO \
   "$DMG_PATH"
 
+rm -rf "$DMG_ROOT"
+
 codesign --verify --deep --strict "$APP_PATH"
 
 echo "$APP_PATH"
