@@ -105,10 +105,10 @@ public sealed class TrayMenuService : IDisposable
 
     private static void ShowAbout()
     {
-        MessageBox.Show(
+        System.Windows.MessageBox.Show(
             "Splat Wallpaper Engine\n\nInteractive desktop wallpaper for Gaussian splats.\n\nGitHub: https://github.com/StoneHub\nPersonal site: https://monroes.tech",
             "About Splat Wallpaper Engine",
-            MessageBoxButton.OK,
-            MessageBoxImage.Information);
+            System.Windows.MessageBoxButton.OK,
+            System.Windows.MessageBoxImage.Information);
     }
 }

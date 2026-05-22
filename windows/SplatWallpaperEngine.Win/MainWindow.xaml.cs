@@ -52,7 +52,7 @@ public partial class MainWindow : Window
 
     public async Task OpenSceneAsync()
     {
-        var dialog = new OpenFileDialog
+        var dialog = new Microsoft.Win32.OpenFileDialog
         {
             Title = "Choose a Gaussian Splat SOG Scene",
             Filter = "SuperSplat scene (*.sog)|*.sog",
