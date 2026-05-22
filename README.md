@@ -39,6 +39,8 @@ Start with a Swift/AppKit shell that owns the desktop-level window, then embed t
 
 ## Run
 
+### macOS
+
 ```bash
 swift run
 ```
@@ -49,6 +51,19 @@ Use the menu-bar `Splat` item to:
 - show or hide the wallpaper window;
 - toggle interaction mode;
 - toggle in-place rotation and tune speed, FPS cap, or VSync rendering.
+
+### Windows Prototype
+
+The Windows port is scaffolded under `windows/SplatWallpaperEngine.Win`. It uses WPF, WebView2, a notification-area tray menu, and a Win32 WorkerW desktop attachment service.
+
+```powershell
+cd windows\SplatWallpaperEngine.Win
+.\sync-renderer.ps1
+dotnet restore
+dotnet build -c Release
+```
+
+See `docs/windows-port-plan.md` for the conversion plan and Windows verification checklist.
 
 ## Links
 
