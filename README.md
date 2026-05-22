@@ -10,6 +10,7 @@ The goal is a menu-bar Mac app that renders a local Gaussian splat as the deskto
 - Keep `.ply` files as source/archive assets, not runtime assets.
 - Render the splat in a desktop-level borderless window.
 - Toggle interaction mode from the menu bar or a hotkey.
+- Open a local `.sog` scene from the menu.
 - Save the active camera view.
 - Pause or reduce frame rate when not interacting.
 
@@ -23,5 +24,16 @@ Gaussian Splat PLY source -> SOG runtime derivative -> desktop renderer
 
 ## First Technical Bet
 
-Start with a Swift/AppKit shell that owns the desktop-level window, then embed a splat renderer. The renderer can initially be web-based if that gets us to a visible prototype faster, but the windowing behavior should be native macOS from the beginning.
+Start with a Swift/AppKit shell that owns the desktop-level window, then embed the proven SuperSplat web viewer from `monroe.space`. Once the user experience is validated, decide whether to keep the web renderer or replace it with a native Metal renderer.
 
+## Run
+
+```bash
+swift run
+```
+
+Use the menu-bar `Splat` item to:
+
+- open a `.sog` scene;
+- show or hide the wallpaper window;
+- toggle interaction mode.
