@@ -22,6 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var wallpaperController: WallpaperWindowController?
     private var interactionMenuItem: NSMenuItem?
+    private var rotationMenuItem: NSMenuItem?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -44,6 +45,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         interactionItem.state = .off
         menu.addItem(interactionItem)
         interactionMenuItem = interactionItem
+
+        let rotationItem = NSMenuItem(title: "Rotate", action: #selector(toggleRotation), keyEquivalent: "r")
+        rotationItem.state = .off
+        menu.addItem(rotationItem)
+        rotationMenuItem = rotationItem
 
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q"))
@@ -119,6 +125,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         interactionMenuItem?.state = isInteractive ? .on : .off
     }
 
+    @objc private func toggleRotation() {
+        guard let wallpaperController else {
+            return
+        }
+
+        let isRotating = wallpaperController.toggleRotation()
+        rotationMenuItem?.state = isRotating ? .on : .off
+    }
+
     @objc private func quit() {
         NSApp.terminate(nil)
     }
@@ -129,6 +144,7 @@ final class WallpaperWindowController: NSObject {
     private var window: WallpaperWindow?
     private weak var rendererView: RendererView?
     private var isInteractive = false
+    private var isRotating = false
     private let passiveLevel = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)) + 1)
     private let interactiveLevel = NSWindow.Level.floating
 
@@ -192,6 +208,15 @@ final class WallpaperWindowController: NSObject {
 
     func loadScene(_ sceneURL: URL) {
         rendererView?.loadRenderer(sceneURL: sceneURL)
+        if isRotating {
+            rendererView?.setRotationEnabled(true)
+        }
+    }
+
+    func toggleRotation() -> Bool {
+        isRotating.toggle()
+        rendererView?.setRotationEnabled(isRotating)
+        return isRotating
     }
 }
 
@@ -259,6 +284,15 @@ final class RendererView: WKWebView, WKScriptMessageHandler, WKNavigationDelegat
 
         diagnosticLog("[SplatRenderer] renderer url=\(url.absoluteString)")
         load(URLRequest(url: url))
+    }
+
+    func setRotationEnabled(_ isEnabled: Bool) {
+        let value = isEnabled ? "true" : "false"
+        evaluateJavaScript("window.splatWallpaperSetRotate?.(\(value));") { _, error in
+            if let error {
+                diagnosticLog("[SplatRenderer] rotate bridge failed: \(error.localizedDescription)")
+            }
+        }
     }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {

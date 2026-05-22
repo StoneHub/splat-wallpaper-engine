@@ -586,6 +586,20 @@
                 const canvas = document.getElementById('application-canvas');
                 const settingsJson = await settings;
                 const viewer = await main(canvas, settingsJson, config);
+                let isWallpaperRotating = false;
+
+                window.splatWallpaperSetRotate = (enabled) => {
+                    isWallpaperRotating = Boolean(enabled);
+                    const { state } = viewer.global;
+
+                    if (isWallpaperRotating) {
+                        state.cameraMode = 'anim';
+                        state.animationPaused = false;
+                    } else if (state.cameraMode === 'anim') {
+                        state.animationPaused = true;
+                        viewer.global.events.fire('inputEvent', 'frame');
+                    }
+                };
 
                 if (config.autoframe) {
                     const previousFirstFrame = window.firstFrame;
@@ -601,6 +615,9 @@
                         frameApplied = true;
                         requestAnimationFrame(() => {
                             viewer.global.events.fire('inputEvent', 'frame');
+                            if (isWallpaperRotating) {
+                                window.splatWallpaperSetRotate(true);
+                            }
                         });
                     };
                 }
