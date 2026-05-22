@@ -39,7 +39,7 @@ public sealed class TrayMenuService : IDisposable
         menu.Items.Add(_fpsItem);
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("About Splat Wallpaper Engine", null, (_, _) => ShowAbout());
-        menu.Items.Add("Quit", null, (_, _) => Application.Current.Shutdown());
+        menu.Items.Add("Quit", null, (_, _) => System.Windows.Application.Current.Shutdown());
 
         _notifyIcon = new Forms.NotifyIcon
         {
