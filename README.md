@@ -12,7 +12,7 @@ The goal is a menu-bar Mac app that renders a local Gaussian splat as the deskto
 - Keep `.ply` files as source/archive assets, not runtime assets.
 - Render the splat in a desktop-level borderless window.
 - Toggle interaction mode from the menu bar or a hotkey.
-- Toggle slow rotation from the menu bar.
+- Toggle in-place splat rotation from the menu bar with speed, FPS cap, and VSync controls.
 - Open a local `.sog` scene from the menu.
 - Save the active camera view.
 - Pause or reduce frame rate when not interacting.
@@ -40,7 +40,7 @@ Use the menu-bar `Splat` item to:
 - open a `.sog` scene;
 - show or hide the wallpaper window;
 - toggle interaction mode;
-- toggle slow rotation.
+- toggle in-place rotation and tune speed, FPS cap, or VSync rendering.
 
 ## Links
 

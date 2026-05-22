@@ -7,7 +7,7 @@ func diagnosticLog(_ message: String) {
     if let data = line.data(using: .utf8) {
         if FileManager.default.fileExists(atPath: url.path),
            let handle = try? FileHandle(forWritingTo: url) {
-            try? handle.seekToEnd()
+            _ = try? handle.seekToEnd()
             try? handle.write(contentsOf: data)
             try? handle.close()
         } else {
@@ -23,7 +23,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var wallpaperController: WallpaperWindowController?
     private var interactionMenuItem: NSMenuItem?
     private var rotationMenuItem: NSMenuItem?
+    private var rotationVSyncMenuItem: NSMenuItem?
+    private var rotationSpeedLabel: NSTextField?
+    private var rotationSpeedSlider: NSSlider?
+    private var rotationFPSLabel: NSTextField?
+    private var rotationFPSSlider: NSSlider?
     private var aboutWindowController: AboutWindowController?
+    private var rotationSpeedDegreesPerSecond = 8.0
+    private var rotationFramesPerSecond = 30.0
+    private var rotationUsesVSync = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -51,6 +59,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         rotationItem.state = .off
         menu.addItem(rotationItem)
         rotationMenuItem = rotationItem
+        let vSyncItem = NSMenuItem(title: "VSync Rotation", action: #selector(toggleRotationVSync), keyEquivalent: "")
+        vSyncItem.state = .off
+        menu.addItem(vSyncItem)
+        rotationVSyncMenuItem = vSyncItem
+        menu.addItem(rotationSpeedMenuItem())
+        menu.addItem(rotationFPSMenuItem())
 
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "About Splat Wallpaper Engine", action: #selector(showAbout), keyEquivalent: ""))
@@ -58,6 +72,86 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         item.menu = menu
         statusItem = item
+    }
+
+    private func rotationSpeedMenuItem() -> NSMenuItem {
+        let speedItem = NSMenuItem()
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 250, height: 52))
+
+        let label = NSTextField(labelWithString: rotationSpeedLabelText())
+        label.font = .systemFont(ofSize: 12)
+        label.translatesAutoresizingMaskIntoConstraints = false
+
+        let slider = NSSlider(
+            value: rotationSpeedDegreesPerSecond,
+            minValue: 1,
+            maxValue: 36,
+            target: self,
+            action: #selector(rotationSpeedChanged(_:))
+        )
+        slider.numberOfTickMarks = 8
+        slider.allowsTickMarkValuesOnly = false
+        slider.translatesAutoresizingMaskIntoConstraints = false
+
+        container.addSubview(label)
+        container.addSubview(slider)
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 14),
+            label.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -14),
+            label.topAnchor.constraint(equalTo: container.topAnchor, constant: 8),
+            slider.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12),
+            slider.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -12),
+            slider.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 4)
+        ])
+
+        rotationSpeedLabel = label
+        rotationSpeedSlider = slider
+        speedItem.view = container
+        return speedItem
+    }
+
+    private func rotationFPSMenuItem() -> NSMenuItem {
+        let fpsItem = NSMenuItem()
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 250, height: 52))
+
+        let label = NSTextField(labelWithString: rotationFPSLabelText())
+        label.font = .systemFont(ofSize: 12)
+        label.translatesAutoresizingMaskIntoConstraints = false
+
+        let slider = NSSlider(
+            value: rotationFramesPerSecond,
+            minValue: 10,
+            maxValue: 60,
+            target: self,
+            action: #selector(rotationFPSChanged(_:))
+        )
+        slider.numberOfTickMarks = 6
+        slider.allowsTickMarkValuesOnly = false
+        slider.translatesAutoresizingMaskIntoConstraints = false
+
+        container.addSubview(label)
+        container.addSubview(slider)
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 14),
+            label.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -14),
+            label.topAnchor.constraint(equalTo: container.topAnchor, constant: 8),
+            slider.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12),
+            slider.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -12),
+            slider.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 4)
+        ])
+
+        rotationFPSLabel = label
+        rotationFPSSlider = slider
+        fpsItem.view = container
+        return fpsItem
+    }
+
+    private func rotationSpeedLabelText() -> String {
+        "Rotate Speed: \(Int(rotationSpeedDegreesPerSecond.rounded())) deg/s"
+    }
+
+    private func rotationFPSLabelText() -> String {
+        "Rotate FPS Cap: \(Int(rotationFramesPerSecond.rounded())) fps"
     }
 
     private func showWallpaper() {
@@ -134,6 +228,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let isRotating = wallpaperController.toggleRotation()
         rotationMenuItem?.state = isRotating ? .on : .off
+    }
+
+    @objc private func rotationSpeedChanged(_ sender: NSSlider) {
+        rotationSpeedDegreesPerSecond = sender.doubleValue
+        rotationSpeedLabel?.stringValue = rotationSpeedLabelText()
+        wallpaperController?.setRotationSpeed(rotationSpeedDegreesPerSecond)
+    }
+
+    @objc private func rotationFPSChanged(_ sender: NSSlider) {
+        rotationFramesPerSecond = sender.doubleValue
+        rotationFPSLabel?.stringValue = rotationFPSLabelText()
+        wallpaperController?.setRotationFrameRate(rotationFramesPerSecond)
+    }
+
+    @objc private func toggleRotationVSync() {
+        rotationUsesVSync.toggle()
+        rotationVSyncMenuItem?.state = rotationUsesVSync ? .on : .off
+        wallpaperController?.setRotationVSyncEnabled(rotationUsesVSync)
     }
 
     @objc private func showAbout() {
@@ -229,6 +341,9 @@ final class WallpaperWindowController: NSObject {
     private weak var rendererView: RendererView?
     private var isInteractive = false
     private var isRotating = false
+    private var rotationSpeedDegreesPerSecond = 8.0
+    private var rotationFramesPerSecond = 30.0
+    private var rotationUsesVSync = false
     private let passiveLevel = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)) + 1)
     private let interactiveLevel = NSWindow.Level.floating
 
@@ -267,6 +382,9 @@ final class WallpaperWindowController: NSObject {
         wallpaperWindow.orderFrontRegardless()
 
         self.rendererView = rendererView
+        rendererView.setRotationSpeed(rotationSpeedDegreesPerSecond)
+        rendererView.setRotationFrameRate(rotationFramesPerSecond)
+        rendererView.setRotationVSyncEnabled(rotationUsesVSync)
         window = wallpaperWindow
     }
 
@@ -292,6 +410,9 @@ final class WallpaperWindowController: NSObject {
 
     func loadScene(_ sceneURL: URL) {
         rendererView?.loadRenderer(sceneURL: sceneURL)
+        rendererView?.setRotationSpeed(rotationSpeedDegreesPerSecond)
+        rendererView?.setRotationFrameRate(rotationFramesPerSecond)
+        rendererView?.setRotationVSyncEnabled(rotationUsesVSync)
         if isRotating {
             rendererView?.setRotationEnabled(true)
         }
@@ -299,8 +420,26 @@ final class WallpaperWindowController: NSObject {
 
     func toggleRotation() -> Bool {
         isRotating.toggle()
+        rendererView?.setRotationSpeed(rotationSpeedDegreesPerSecond)
+        rendererView?.setRotationFrameRate(rotationFramesPerSecond)
+        rendererView?.setRotationVSyncEnabled(rotationUsesVSync)
         rendererView?.setRotationEnabled(isRotating)
         return isRotating
+    }
+
+    func setRotationSpeed(_ degreesPerSecond: Double) {
+        rotationSpeedDegreesPerSecond = degreesPerSecond
+        rendererView?.setRotationSpeed(degreesPerSecond)
+    }
+
+    func setRotationFrameRate(_ framesPerSecond: Double) {
+        rotationFramesPerSecond = framesPerSecond
+        rendererView?.setRotationFrameRate(framesPerSecond)
+    }
+
+    func setRotationVSyncEnabled(_ isEnabled: Bool) {
+        rotationUsesVSync = isEnabled
+        rendererView?.setRotationVSyncEnabled(isEnabled)
     }
 }
 
@@ -316,6 +455,11 @@ final class WallpaperWindow: NSWindow {
 
 @MainActor
 final class RendererView: WKWebView, WKScriptMessageHandler, WKNavigationDelegate {
+    private var rotationEnabled = false
+    private var rotationSpeedDegreesPerSecond = 8.0
+    private var rotationFramesPerSecond = 30.0
+    private var rotationUsesVSync = false
+
     init(frame: NSRect, sceneURL: URL?) {
         let config = WKWebViewConfiguration()
         config.preferences.javaScriptCanOpenWindowsAutomatically = false
@@ -337,7 +481,7 @@ final class RendererView: WKWebView, WKScriptMessageHandler, WKNavigationDelegat
         ))
         config.userContentController = userContentController
         super.init(frame: frame, configuration: config)
-        userContentController.add(self, name: "splatLog")
+        userContentController.add(WeakScriptMessageHandler(delegate: self), name: "splatLog")
         navigationDelegate = self
         wantsLayer = true
         layer?.backgroundColor = NSColor.black.cgColor
@@ -371,10 +515,39 @@ final class RendererView: WKWebView, WKScriptMessageHandler, WKNavigationDelegat
     }
 
     func setRotationEnabled(_ isEnabled: Bool) {
+        rotationEnabled = isEnabled
         let value = isEnabled ? "true" : "false"
         evaluateJavaScript("window.splatWallpaperSetRotate?.(\(value));") { _, error in
             if let error {
                 diagnosticLog("[SplatRenderer] rotate bridge failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    func setRotationSpeed(_ degreesPerSecond: Double) {
+        rotationSpeedDegreesPerSecond = degreesPerSecond
+        evaluateJavaScript("window.splatWallpaperSetRotateSpeed?.(\(degreesPerSecond));") { _, error in
+            if let error {
+                diagnosticLog("[SplatRenderer] rotate speed bridge failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    func setRotationFrameRate(_ framesPerSecond: Double) {
+        rotationFramesPerSecond = framesPerSecond
+        evaluateJavaScript("window.splatWallpaperSetRotateFPS?.(\(framesPerSecond));") { _, error in
+            if let error {
+                diagnosticLog("[SplatRenderer] rotate fps bridge failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    func setRotationVSyncEnabled(_ isEnabled: Bool) {
+        rotationUsesVSync = isEnabled
+        let value = isEnabled ? "true" : "false"
+        evaluateJavaScript("window.splatWallpaperSetRotateVSync?.(\(value));") { _, error in
+            if let error {
+                diagnosticLog("[SplatRenderer] rotate vsync bridge failed: \(error.localizedDescription)")
             }
         }
     }
@@ -385,6 +558,10 @@ final class RendererView: WKWebView, WKScriptMessageHandler, WKNavigationDelegat
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         diagnosticLog("[SplatRenderer] navigation finished")
+        setRotationSpeed(rotationSpeedDegreesPerSecond)
+        setRotationFrameRate(rotationFramesPerSecond)
+        setRotationVSyncEnabled(rotationUsesVSync)
+        setRotationEnabled(rotationEnabled)
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
@@ -393,6 +570,18 @@ final class RendererView: WKWebView, WKScriptMessageHandler, WKNavigationDelegat
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         diagnosticLog("[SplatRenderer] provisional navigation failed: \(error.localizedDescription)")
+    }
+}
+
+final class WeakScriptMessageHandler: NSObject, WKScriptMessageHandler {
+    weak var delegate: WKScriptMessageHandler?
+
+    init(delegate: WKScriptMessageHandler) {
+        self.delegate = delegate
+    }
+
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        delegate?.userContentController(userContentController, didReceive: message)
     }
 }
 

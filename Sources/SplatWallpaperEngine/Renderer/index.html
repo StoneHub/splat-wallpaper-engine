@@ -587,17 +587,84 @@
                 const settingsJson = await settings;
                 const viewer = await main(canvas, settingsJson, config);
                 let isWallpaperRotating = false;
+                let wallpaperRotationSpeed = 8;
+                let wallpaperRotationFPS = 30;
+                let wallpaperRotationUsesVSync = false;
+                let wallpaperRotationFrameTime = 1 / wallpaperRotationFPS;
+                let wallpaperRotationAccumulator = 0;
+                let wallpaperRotationOffset = 0;
+                let wallpaperRotationBase = null;
+
+                const readSplatEuler = () => {
+                    const entity = viewer.wallpaperSplatEntity;
+                    const euler = entity?.getEulerAngles?.();
+                    return euler ? { x: euler.x, y: euler.y, z: euler.z } : null;
+                };
+
+                const applySplatRotation = () => {
+                    const entity = viewer.wallpaperSplatEntity;
+                    if (!entity || !wallpaperRotationBase) {
+                        return;
+                    }
+
+                    entity.setEulerAngles(
+                        wallpaperRotationBase.x,
+                        wallpaperRotationBase.y + wallpaperRotationOffset,
+                        wallpaperRotationBase.z
+                    );
+                    viewer.forceRenderNextFrame = true;
+                    viewer.global.app.renderNextFrame = true;
+                };
+
+                viewer.global.app.on('update', (deltaTime) => {
+                    if (!isWallpaperRotating) {
+                        return;
+                    }
+
+                    wallpaperRotationAccumulator += deltaTime;
+                    if (!wallpaperRotationUsesVSync && wallpaperRotationAccumulator < wallpaperRotationFrameTime) {
+                        return;
+                    }
+
+                    const elapsed = wallpaperRotationUsesVSync ? deltaTime : wallpaperRotationAccumulator;
+                    wallpaperRotationAccumulator = 0;
+                    wallpaperRotationOffset = (wallpaperRotationOffset + elapsed * wallpaperRotationSpeed) % 360;
+                    applySplatRotation();
+                });
+
+                window.splatWallpaperSetRotateSpeed = (degreesPerSecond) => {
+                    const parsed = Number(degreesPerSecond);
+                    if (Number.isFinite(parsed)) {
+                        wallpaperRotationSpeed = Math.max(0, Math.min(90, parsed));
+                    }
+                };
+
+                window.splatWallpaperSetRotateFPS = (framesPerSecond) => {
+                    const parsed = Number(framesPerSecond);
+                    if (Number.isFinite(parsed)) {
+                        wallpaperRotationFPS = Math.max(1, Math.min(60, parsed));
+                        wallpaperRotationFrameTime = 1 / wallpaperRotationFPS;
+                    }
+                };
+
+                window.splatWallpaperSetRotateVSync = (enabled) => {
+                    wallpaperRotationUsesVSync = Boolean(enabled);
+                    wallpaperRotationAccumulator = 0;
+                };
 
                 window.splatWallpaperSetRotate = (enabled) => {
                     isWallpaperRotating = Boolean(enabled);
-                    const { state } = viewer.global;
 
                     if (isWallpaperRotating) {
-                        state.cameraMode = 'anim';
-                        state.animationPaused = false;
-                    } else if (state.cameraMode === 'anim') {
-                        state.animationPaused = true;
-                        viewer.global.events.fire('inputEvent', 'frame');
+                        wallpaperRotationBase = readSplatEuler() ?? wallpaperRotationBase;
+                        wallpaperRotationOffset = 0;
+                        wallpaperRotationAccumulator = 0;
+                        applySplatRotation();
+                    } else {
+                        viewer.forceRenderNextFrame = false;
+                        wallpaperRotationBase = readSplatEuler() ?? wallpaperRotationBase;
+                        wallpaperRotationOffset = 0;
+                        wallpaperRotationAccumulator = 0;
                     }
                 };
 

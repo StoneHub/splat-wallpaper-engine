@@ -4,21 +4,28 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_NAME="Splat Wallpaper Engine"
 BUNDLE_ID="space.monroe.splat-wallpaper-engine"
+APP_VERSION="0.1.4"
 BUILD_DIR="$ROOT_DIR/.build/arm64-apple-macosx/release"
 DIST_DIR="$ROOT_DIR/dist"
 APP_PATH="$DIST_DIR/$APP_NAME.app"
 DMG_ROOT="$DIST_DIR/dmg-root"
 DMG_PATH="$DIST_DIR/Splat-Wallpaper-Engine.dmg"
+ICON_PATH="$ROOT_DIR/assets/AppIcon.icns"
 
 cd "$ROOT_DIR"
 
 swift build -c release
+
+if [[ ! -f "$ICON_PATH" ]]; then
+  swift scripts/make-icon.swift
+fi
 
 rm -rf "$APP_PATH" "$DMG_ROOT" "$DMG_PATH"
 mkdir -p "$APP_PATH/Contents/MacOS" "$APP_PATH/Contents/Resources" "$DMG_ROOT"
 
 cp "$BUILD_DIR/SplatWallpaperEngine" "$APP_PATH/Contents/MacOS/SplatWallpaperEngine"
 cp -R "$BUILD_DIR/SplatWallpaperEngine_SplatWallpaperEngine.bundle" "$APP_PATH/Contents/Resources/"
+cp "$ICON_PATH" "$APP_PATH/Contents/Resources/AppIcon.icns"
 
 cat > "$APP_PATH/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -31,6 +38,8 @@ cat > "$APP_PATH/Contents/Info.plist" <<PLIST
   <string>SplatWallpaperEngine</string>
   <key>CFBundleIdentifier</key>
   <string>$BUNDLE_ID</string>
+  <key>CFBundleIconFile</key>
+  <string>AppIcon</string>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundleName</key>
@@ -38,9 +47,9 @@ cat > "$APP_PATH/Contents/Info.plist" <<PLIST
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
-  <string>0.1.0</string>
+  <string>$APP_VERSION</string>
   <key>CFBundleVersion</key>
-  <string>1</string>
+  <string>4</string>
   <key>LSMinimumSystemVersion</key>
   <string>14.0</string>
   <key>LSUIElement</key>

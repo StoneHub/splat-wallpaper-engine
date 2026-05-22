@@ -83993,6 +83993,7 @@ class Viewer {
     voxelOverlay = null;
     meshOverlay = null;
     navCursor = null;
+    wallpaperSplatEntity = null;
     origChunks;
     constructor(global, gsplatLoad, skyboxLoad, collisionLoad) {
         this.global = global;
@@ -84125,6 +84126,7 @@ class Viewer {
         });
         // wait for the model to load
         Promise.all([gsplatLoad, skyboxLoad, collisionLoad]).then((results) => {
+            this.wallpaperSplatEntity = results[0];
             const gsplat = results[0].gsplat;
             const collision = results[2];
             // get scene bounding box
