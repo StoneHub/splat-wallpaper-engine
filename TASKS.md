@@ -1,5 +1,11 @@
 # Tasks
 
+## Status
+
+This repo is now a public landing/migration repo for the original WebKit
+prototype. Active development should move to the native Metal successor,
+`benwilliams0540/gsplat`, once licensing and public access are settled.
+
 ## Done
 
 - Created project folder under `/Users/monroe/Developer/Scratch/splat-wallpaper-engine`.
@@ -13,15 +19,20 @@
 - Bundled a small known-good `scene.sog` for first real rendering.
 - Added menu-driven interaction mode toggling.
 - Added `Open SOG Scene...` and managed scene copying for selected `.sog` files.
+- Published macOS releases through `v0.1.7`.
+- Added a Windows WebView2/tray prototype and CI artifact workflow.
 
 ## Next
 
-1. Confirm the bundled Bucryss Erie `.sog` renders in the desktop window.
-2. Persist camera state.
-3. Add idle/power policy.
-4. Test desktop behavior across Spaces, full-screen apps, and external displays.
-5. Replace prototype scene copying with security-scoped file access if needed for a packaged app.
+1. Keep this repo as a clear public reference for the old prototype.
+2. Do not copy private `gsplat` source into this Apache-2.0 repo without an
+   explicit license/contribution decision.
+3. If the successor becomes public, update README links to the public release
+   and archive this repo on GitHub.
+4. If Windows remains important, use the old WPF/WebView2 notes as UX reference,
+   but plan a separate native graphics strategy rather than porting Apple Metal.
 
-## Current Bet
+## Final Bet
 
-Use the native AppKit shell for desktop/window behavior and keep the renderer replaceable. Start with whichever SOG renderer gets a real splat visible fastest, then decide whether to keep web rendering or move lower-level into Metal.
+The native Metal renderer path won. This prototype should stay useful as
+historical product and packaging reference, not as the primary renderer codebase.
